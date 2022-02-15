@@ -1,0 +1,1 @@
+{"version":3,"sources":["views/Home/index.tsx"],"names":["Home"],"mappings":"qHAAA,uBAQeA,UANf,WACE,OACE","file":"static/js/3.cf8ce4eb.chunk.js","sourcesContent":["import React from 'react'\r\n\r\nfunction Home() {\r\n  return (\r\n    <div>Welcome to Wand Investment</div>\r\n  )\r\n}\r\n\r\nexport default Home"],"sourceRoot":""}

@@ -1,0 +1,2 @@
+(this["webpackJsonpwand-frontend"]=this["webpackJsonpwand-frontend"]||[]).push([[3],{40:function(n,t,e){"use strict";e.r(t);e(0);var s=e(1);t.default=function(){return Object(s.jsx)("div",{children:"Welcome to Wand Investment"})}}}]);
+//# sourceMappingURL=3.cf8ce4eb.chunk.js.map
