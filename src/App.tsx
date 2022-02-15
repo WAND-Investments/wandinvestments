@@ -8,18 +8,17 @@ import history from './routerHistory'
 const Home = lazy(() => import('./views/Home'))
 
 const App: React.FC = () => {
-    return (
-        <Router history={history}>
-        <SuspenseWithChunkError fallback={<PageLoader />}>
-            <Switch>
-                <Route path="/" exact>
-                    <Home />
-                </Route>
-            </Switch>
-        </SuspenseWithChunkError>
-        </Router>
-    )
-
+  return (
+    <Router history={history}>
+      <SuspenseWithChunkError fallback={<PageLoader />}>
+        <Switch>
+          <Route path="/" exact>
+            <Home />
+          </Route>
+        </Switch>
+      </SuspenseWithChunkError>
+    </Router>
+  )
 }
 
 export default React.memo(App)
