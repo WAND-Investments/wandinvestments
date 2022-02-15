@@ -1,19 +1,19 @@
 {
   "files": {
-    "main.js": "/wandinvestments.git/static/js/main.84fd5d34.chunk.js",
-    "main.js.map": "/wandinvestments.git/static/js/main.84fd5d34.chunk.js.map",
-    "runtime-main.js": "/wandinvestments.git/static/js/runtime-main.8c0d1417.js",
-    "runtime-main.js.map": "/wandinvestments.git/static/js/runtime-main.8c0d1417.js.map",
-    "static/js/2.d4baec99.chunk.js": "/wandinvestments.git/static/js/2.d4baec99.chunk.js",
-    "static/js/2.d4baec99.chunk.js.map": "/wandinvestments.git/static/js/2.d4baec99.chunk.js.map",
-    "static/js/3.cf8ce4eb.chunk.js": "/wandinvestments.git/static/js/3.cf8ce4eb.chunk.js",
-    "static/js/3.cf8ce4eb.chunk.js.map": "/wandinvestments.git/static/js/3.cf8ce4eb.chunk.js.map",
-    "index.html": "/wandinvestments.git/index.html",
-    "static/js/2.d4baec99.chunk.js.LICENSE.txt": "/wandinvestments.git/static/js/2.d4baec99.chunk.js.LICENSE.txt"
+    "main.js": "/WAND-Investments/wandinvestments.git/static/js/main.84fd5d34.chunk.js",
+    "main.js.map": "/WAND-Investments/wandinvestments.git/static/js/main.84fd5d34.chunk.js.map",
+    "runtime-main.js": "/WAND-Investments/wandinvestments.git/static/js/runtime-main.beeee8ef.js",
+    "runtime-main.js.map": "/WAND-Investments/wandinvestments.git/static/js/runtime-main.beeee8ef.js.map",
+    "static/js/2.b767222f.chunk.js": "/WAND-Investments/wandinvestments.git/static/js/2.b767222f.chunk.js",
+    "static/js/2.b767222f.chunk.js.map": "/WAND-Investments/wandinvestments.git/static/js/2.b767222f.chunk.js.map",
+    "static/js/3.cf8ce4eb.chunk.js": "/WAND-Investments/wandinvestments.git/static/js/3.cf8ce4eb.chunk.js",
+    "static/js/3.cf8ce4eb.chunk.js.map": "/WAND-Investments/wandinvestments.git/static/js/3.cf8ce4eb.chunk.js.map",
+    "index.html": "/WAND-Investments/wandinvestments.git/index.html",
+    "static/js/2.b767222f.chunk.js.LICENSE.txt": "/WAND-Investments/wandinvestments.git/static/js/2.b767222f.chunk.js.LICENSE.txt"
   },
   "entrypoints": [
-    "static/js/runtime-main.8c0d1417.js",
-    "static/js/2.d4baec99.chunk.js",
+    "static/js/runtime-main.beeee8ef.js",
+    "static/js/2.b767222f.chunk.js",
     "static/js/main.84fd5d34.chunk.js"
   ]
 }
