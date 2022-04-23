@@ -1,0 +1,74 @@
+{
+	"compiler": {
+		"version": "0.8.7+commit.e28d00a7"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "whom",
+						"type": "address"
+					}
+				],
+				"name": "balanceOf",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			}
+		],
+		"devdoc": {
+			"kind": "dev",
+			"methods": {},
+			"version": 1
+		},
+		"userdoc": {
+			"kind": "user",
+			"methods": {},
+			"notice": "Abstract Functions*",
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"WandInstruments.sol": "ERC20Interface"
+		},
+		"evmVersion": "london",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"IERC20.sol": {
+			"keccak256": "0x61437cb513a887a1bbad006e7b1c8b414478427d33de47c5600af3c748f108da",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://2c3d0973630ed74f2b5ce3944677a885dc70ec32fc83b35f55045a10224da32b",
+				"dweb:/ipfs/QmbefZ5RoEZKNHXCALfh683PnaNYzKPcKMFjyY1DVAgq8A"
+			]
+		},
+		"WandInstruments.sol": {
+			"keccak256": "0x6fe7f256d16159dce0655353d8ab8def009593c02f61fbce200e144eddda3fa1",
+			"license": "MIT LICENSE",
+			"urls": [
+				"bzz-raw://567186a8b194c0536185466371631523ab321e450bf38aae8bb26dc9ffb8bd86",
+				"dweb:/ipfs/Qmbywaq7meMJmHgwJFhcxcZqfA6Qv1cUcZgF1b8noQWYGF"
+			]
+		}
+	},
+	"version": 1
+}
