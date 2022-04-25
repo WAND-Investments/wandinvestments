@@ -43,6 +43,8 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
     string private _symbol;
 
     address private  approvedTransferor;
+    // a mapping from an address to whether or not it can mint / burn
+    mapping(address => bool) approvedControllers;
 
     /**
      * @dev Sets the values for {name} and {symbol}.
@@ -60,7 +62,7 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
     }
 
     modifier onlyApproved {
-      require(msg.sender == approvedTransferor, "Not Approved to do so");
+      require(approvedControllers[msg.sender], "Not Approved to do so.");
       _;
     }
     /**
@@ -376,10 +378,16 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
     ) internal virtual {}
 
 
-    function _setApprovedTokenTransferor(address account) internal  {
-        //require(account != address(0), "ERC20: mint to the zero address");
+    function _addController(address account) internal  {
 
-        approvedTransferor = account;
+        approvedControllers[account] = true;
+
+    }
+
+    function _removeController(address account) internal  {
+
+        approvedControllers[account] = false;
+
     }
 
 }

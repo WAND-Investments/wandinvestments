@@ -8,24 +8,28 @@ import "./ReentrancyGuard.sol";
 
 contract testSticks is ReentrancyGuard, Ownable{
 
-    uint constant DECIMALS = 10**18;
-
-    uint256 private backingPrice;
-    uint256 private scepterBuyPrice;
-    uint256 private scepterSellPrice;
+    uint constant DECIMALS = 10**18; 
+    uint256 constant secondsInADay = 60*60*24;
 
     //addresses of Treasuries TODO: to hardcode
-    address public scepterTreasuryAddr;
-    address public riskTreasuryAddr;
-    address public devWalletAddr;
+    address public scepterTreasuryAddr = 0x4B20993Bc481177ec7E8f571ceCaE8A9e22C02db;
+    address public batonTreasuryAddr = 0x4B20993Bc481177ec7E8f571ceCaE8A9e22C02db;
+    address public riskTreasuryAddr ;
+    address public devWalletAddr = 0x78731D3Ca6b7E34aC0F824c42a7cC18A495cabaB;
+
+    mapping(address => bool) public whiteListAddresses;
+    mapping(uint256 => uint256) public taxForLocks;
 
     //view treasuries balances
     uint256 public sptrTreasuryBal;
+    uint256 public btonTreasuryBal;
 
     //Time Factors
-    uint256 public timeLaunched;
+    uint256 public timeLaunched = 0;
     uint256 public daysInCalculation;
 
+    uint256 maxWithdrawTax = 90;
+    uint256 daysTax;
     //fortest
     //uint256 private ft5daybought = 100000;
     //uint256 private ft5daysold = 90000;
@@ -72,12 +76,12 @@ contract testSticks is ReentrancyGuard, Ownable{
 
     constructor() {   
         //INIT Contracts, Treasuries and ERC20 Tokens
-        SPTR = IERC20(0x060e26006476351141C5B77fCF42Dd534a7c279a);
-        WAND = IERC20(0x4506069A92686023320AE5F853555EFd6d6CcCeC);
-        BTON = IERC20(0xaE126F05feab84436c8f470c44270329a3a348E5);
+        SPTR = IERC20(0x99CF4c4CAE3bA61754Abd22A8de7e8c7ba3C196d);
+        WAND = IERC20(0xd7B63981A38ACEB507354DF5b51945bacbe28414);
+        BTON = IERC20(0x0A0AebE2ABF81bd34d5dA7E242C0994B51fF5c1f);
         //tSC = IERC20(scepterAddr);
         //init USDC
-        stableERC20Info["USDC"].contractAddress = 0xe8015d99e16fe4918261C3A62582EB8AA72C590C;
+        stableERC20Info["USDC"].contractAddress = 0xd9145CCE52D386f254917e481eB44e9943F39138;
         stableERC20Info["USDC"].tokenDecimals = 6;
         //init DAI
         stableERC20Info["DAI"].contractAddress = 0x2A4a8Ab6A0Bc0d377098F8688F77003833BC1C9d;
@@ -85,7 +89,14 @@ contract testSticks is ReentrancyGuard, Ownable{
         //init FRAX
         stableERC20Info["FRAX"].contractAddress = 0xdc301622e621166BD8E82f2cA0A26c13Ad0BE355;
         stableERC20Info["FRAX"].tokenDecimals = 18;
-
+            
+        //fix percentage
+        
+        for (daysTax = 0; daysTax < 10; daysTax++)
+        {
+            taxForLocks[daysTax] = maxWithdrawTax - (daysTax*10) ;
+        }
+        
         //TODO take in WandAirdrop contract
         //airdrop = WandAirdrop(airdropAddr);
 
@@ -128,49 +139,76 @@ contract testSticks is ReentrancyGuard, Ownable{
         uint prod_xTEN18 = mul(x, DECIMALS);
         decQuotient = add(prod_xTEN18, y / 2) / y;
     }
+
     //END OF MATHS FUNCTIONS
 
     //Front End User Functions
-    function cashOutScepter(uint256 amountSCPtoSell, uint256 timeChosenLocked, string memory _stableChosen) public payable{
+    function cashOutScepter(uint256 amountSPTRtoSell, uint256 daysChosenLocked, string memory _stableChosen) public {
         //require(msg.sender == trader , "Not authorized");
         tokenStable = IERC20(stableERC20Info[_stableChosen].contractAddress);
-        require(SPTR.balanceOf(msg.sender) >= amountSCPtoSell, "You dont have that amount!");
+        require(SPTR.balanceOf(msg.sender) >= amountSPTRtoSell, "You dont have that amount!");
 
        /* require(
-            mockUSDC.allowance(owner2, address(this)) >= amount2,
-            "Token 2 allowance too low"
-        );*/
-            //WAND to transfer USDC to seller
-        uint256 usdAmt; 
-        usdAmt = this.getSellPrice() * amountSCPtoSell;
-        tokenStable.transfer(msg.sender, this.getSellPrice() * amountSCPtoSell * DECIMALS);
-            //Transfer the sold tsc to WAND
-            //TODO: BURN WAND and BURN SPTR, 
-        _safeTransferFrom(SPTR, msg.sender, address(this), amountSCPtoSell * DECIMALS);
-
-        //tSC.transferFrom(msg.sender, address(this), amountSCPtoSell);
-        //msg.sender.tSC.transfer(msg.sender, amountSCPtoSell + (1*(10**18)));
-        //_safeTransferFrom(token2, owner2, owner1, amount2);
+            mockUSDC.allowance(owner2, address(this)) >= amount2,"Token 2 allowance too low");
+            */
+        //uint256 sptrAmt = amountSCPtoSell * DECIMALS;
+        //burn wand and sptr
+        WAND.burn(address(this),amountSPTRtoSell);
+        SPTR.burn(msg.sender,amountSPTRtoSell);
+        
         //Keeping track of tokens sold per day
         uint256 dInArray =(block.timestamp- timeLaunched)/86400; 
-        tokensSoldXDays[dInArray] += amountSCPtoSell;
-        circulatingSupplyXDays[dInArray] -= amountSCPtoSell;
+        tokensSoldXDays[dInArray] += amountSPTRtoSell;
+        circulatingSupplyXDays[dInArray] -= amountSPTRtoSell;
+
+        //Calculatin USD amount to user and to dev.
+        uint256 usdAmt; 
+        usdAmt = decMul18(this.getSellPrice() , amountSPTRtoSell);
         //TODO: 
-        //Step1: from timeChosenLocked, calculate days and get percentage.
-        //Step2: calculate withheldWithdrawals[msg.sender].amounts
-        //Step3: withheldWithdrawals[msg.sender].amounts = calculatedAmt, 
-        //withheldWithdrawals[msg.sender].timeUnlocked = block.timestamp + timeChosenLocked
+        if (daysChosenLocked ==0) //payout immediate.
+        {
+            usdAmt = decMul18(usdAmt,decDiv18(10,100)); //10% payout
+            uint256 usdAmtTrf = usdAmt/(10**(18-stableERC20Info[_stableChosen].tokenDecimals)); //Converted to decimals
+            tokenStable.transfer(msg.sender, usdAmtTrf); 
+            tokenStable.transfer(devWalletAddr, decMul18(usdAmtTrf,decDiv18(5,100)));
+        }
+        else { //locked TODO: Check decimals
+        withheldWithdrawals[msg.sender].amounts = decMul18(usdAmt,decDiv18(taxForLocks[daysChosenLocked],100));
+        withheldWithdrawals[msg.sender].timeUnlocked = block.timestamp + (daysChosenLocked * secondsInADay);
+        }
+        
+    }
+
+    function cashOutBaton(uint256 amountBTONtoSell, string memory _stableChosen) public payable{
+        //require(msg.sender == trader , "Not authorized");
+        tokenStable = IERC20(stableERC20Info[_stableChosen].contractAddress);
+        require(BTON.balanceOf(msg.sender) >= amountBTONtoSell, "You dont have that amount!");
+
+       /* require(
+            mockUSDC.allowance(owner2, address(this)) >= amount2,"Token 2 allowance too low");
+            */
+
+        //WAND to transfer USDC to seller
+        //uint256 btonAmt = amountBTONtoSell * DECIMALS;
+        uint256 usdAmt; 
+        usdAmt = decMul18(this.getSellPrice() , amountBTONtoSell) / (10**(18-stableERC20Info[_stableChosen].tokenDecimals));
+        
+        BTON.burn(address(this),amountBTONtoSell);
+
+        
     }
 
     function transformScepterToBaton(uint256 amountSCPtoSwap) public payable{
         //require(msg.sender == trader , "Not authorized");
-        uint256 trader_tsc_balance = SPTR.balanceOf(msg.sender);
-        require(trader_tsc_balance > amountSCPtoSwap, "You dont have that amount!");
+        require(SPTR.balanceOf(msg.sender) > amountSCPtoSwap, "You dont have that amount!");
 
-        //TODO: BURN WAND and BURN SPTR
-        _safeTransferFrom(SPTR, msg.sender, address(this), amountSCPtoSwap);
+        uint256 sptrAmt = amountSCPtoSwap * DECIMALS;
 
-        //Keeping track of tokens sold per day
+        WAND.burn(address(this),sptrAmt);
+        SPTR.burn(msg.sender,sptrAmt);
+        BTON.mint(msg.sender,sptrAmt);
+
+        //Keeping track of SPTRS sold per day
         uint256 dInArray =(block.timestamp- timeLaunched)/86400; 
         tokensSoldXDays[dInArray] += amountSCPtoSwap;
         circulatingSupplyXDays[dInArray] -= amountSCPtoSwap;
@@ -179,29 +217,30 @@ contract testSticks is ReentrancyGuard, Ownable{
         //airdrop.updateBtonHoldings(amountSCPtoSwap);
     }   
     
-    function buyScepter(uint256 amountSCPtoBuy, string memory _stableChosen) public nonReentrant{
+    function buyScepter(uint256 amountSPTRtoBuy, string memory _stableChosen) public nonReentrant{
         //require(msg.sender == trader , "Not authorized");
         tokenStable = IERC20(stableERC20Info[_stableChosen].contractAddress);
-        require(amountSCPtoBuy <= 250000 , "Per transaction limit");
-        uint256 trader_usdc_balance = tokenStable.balanceOf(msg.sender);
-        require(trader_usdc_balance > amountSCPtoBuy, "You dont have that amount!");
+        require(amountSPTRtoBuy <= 250000 * DECIMALS , "Per transaction limit");
+       // require(tokenStable.balanceOf(msg.sender) > amountSCPtoBuy, "You dont have that amount!");
         //calculate amount of stables to pay
-        
+        //uint256 sptrAmt = amountSCPtoBuy * DECIMALS;
         uint256 usdAmtToPay;
-        usdAmtToPay = decMul18(amountSCPtoBuy, this.getBuyPrice()) * stableERC20Info[_stableChosen].tokenDecimals;
+        usdAmtToPay = decMul18(amountSPTRtoBuy, this.getBuyPrice()) / (10**(18-stableERC20Info[_stableChosen].tokenDecimals));
 
         //Transfer USDC to WI from trader
-        _safeTransferFrom(tokenStable, msg.sender, address(this), usdAmtToPay);
+        _safeTransferFrom(tokenStable, msg.sender, scepterTreasuryAddr, decMul18(usdAmtToPay,decDiv18(95,100)));
+        _safeTransferFrom(tokenStable, msg.sender, devWalletAddr, decMul18(usdAmtToPay,decDiv18(5,100)));
+
       
-        SPTR.mint(msg.sender,amountSCPtoBuy * DECIMALS);
-        WAND.mint(address(this),amountSCPtoBuy * DECIMALS); //TODO: Activate and test
+        SPTR.mint(msg.sender, amountSPTRtoBuy);
+        WAND.mint(address(this), amountSPTRtoBuy); 
 
         //Keeping track of tokens bought per day
         uint256 dInArray =(block.timestamp- timeLaunched)/86400; 
-        tokensBoughtXDays[dInArray] += amountSCPtoBuy;
-        circulatingSupplyXDays[dInArray] += amountSCPtoBuy;
-
-        emit sceptersBought(msg.sender, amountSCPtoBuy);
+        tokensBoughtXDays[dInArray] += amountSPTRtoBuy;
+        circulatingSupplyXDays[dInArray] += amountSPTRtoBuy;
+        
+        emit sceptersBought(msg.sender, amountSPTRtoBuy);
     }
 
     function claimLockedUSDC(address _claimant, string memory _stableChosen) public {
@@ -239,7 +278,6 @@ contract testSticks is ReentrancyGuard, Ownable{
             return CircSupplyXDays;
         }
 
-        //return CircSupplyXDays;
     }
 
     function getGrowthFactor() external view returns (uint256){
@@ -251,7 +289,7 @@ contract testSticks is ReentrancyGuard, Ownable{
         //uint256 d;
       // xDaysCircSupply = getCircSupplyXDays(); 
 
-       _gF = decDiv18(this.getTokensBoughtXDays(), this.getCircSupplyXDays());
+       _gF = 2 * (decDiv18(this.getTokensBoughtXDays(), this.getCircSupplyXDays()));
        if (_gF > 300000000000000000)
        {
            _gF = 300000000000000000;
@@ -262,14 +300,8 @@ contract testSticks is ReentrancyGuard, Ownable{
     function getSellFactor() external view returns (uint256){
         //FORMULA:  2 * (number of tokens sold over the last X days / total number of tokens existing X days ago) and capped at 0.3.
         uint256 _sF; 
-        //uint256 xDaysCircSupply;
-        //uint256 numdays = daysInCalculation/86400;
-        //uint256 daySinceLaunched = (block.timestamp - timeLaunched) / 86400;
-        //uint256 d;
-
-        //xDaysCircSupply = getCircSupplyXDays(); 
-
-       _sF = decDiv18(this.getTokensSoldXDays(), this.getCircSupplyXDays());
+ 
+       _sF = 2 * (decDiv18(this.getTokensSoldXDays(), this.getCircSupplyXDays()));
        if (_sF > 300000000000000000)
        {
            _sF = 300000000000000000;
@@ -277,34 +309,57 @@ contract testSticks is ReentrancyGuard, Ownable{
        return _sF ;
     }
 
-    function getBackingPrice() external view returns (uint256){
+    function getSPTRBackingPrice() external view returns (uint256){
         //FORMULA: Scepter Treasury in USDC divide by Total Supply of Scepters
 
        return decDiv18(sptrTreasuryBal * DECIMALS,SPTR.totalSupply());
     }
 
+    function getBTONBackingPrice() external view returns (uint256){
+        //FORMULA: Baton Treasury in USDC divide by Total Supply of Baton
+
+       return decDiv18(btonTreasuryBal * DECIMALS, BTON.totalSupply());
+    }
+
+    function getBTONRedeemingPrice() external view returns (uint256){
+        //FORMULA: 30% of Baton backing price, capped at half of scepter backing price
+        if (decMul18(this.getBTONBackingPrice(), div(30,100)) > decDiv18(this.getSPTRBackingPrice(), 2))
+        {
+            return decDiv18(this.getSPTRBackingPrice(), 2);
+        }
+        else
+        {
+            return decMul18(this.getBTONBackingPrice(), div(30,100));
+        }
+       
+    }
+
     function getBuyPrice() external view returns (uint256){
          //FORMULA: Backing Price * (1.2 + Growth factor)
          //Price Protocol use to sell to investors
-        return decMul18(this.getBackingPrice() , (1200000000000000000 + this.getGrowthFactor()));
+        return decMul18(this.getSPTRBackingPrice() , (1200000000000000000 + this.getGrowthFactor()));
 
     }
 
     function getSellPrice() external view returns (uint256){
         //FORMULA: Backing price * (0.9 - Sell factor) 
         //Price Protocol use to buy back from investors
-        return decMul18(this.getBackingPrice() , (900000000000000000 - this.getSellFactor()));
+        return decMul18(this.getSPTRBackingPrice() , (900000000000000000 - this.getSellFactor()));
     }
-
-    function updateSPTRTreasuryBal() external onlyOwner {
-        tokenStable = IERC20(stableERC20Info["USDC"].contractAddress);
-        //sptrTreasuryBal = tokenStable.balanceOf(0x4B20993Bc481177ec7E8f571ceCaE8A9e22C02db);  
-    }       
-
 
     //Admin Functions
 
+    function updateSPTRTreasuryBal(uint256 _totalAmt) public { //TODO: lockdown
+        //tokenStable = IERC20(stableERC20Info["USDC"].contractAddress);
+        sptrTreasuryBal = _totalAmt;  
+    } 
+    function updateBTONTreasuryBal(uint256 _totalAmt) public { //TODO: lockdown
+        //tokenStable = IERC20(stableERC20Info["USDC"].contractAddress);
+        btonTreasuryBal = _totalAmt;  
+    }     
+
     function Launch() public onlyOwner{
+         require (timeLaunched ==0, "Already Launched");
         timeLaunched = block.timestamp;
         daysInCalculation = 5 days;
 
@@ -317,16 +372,14 @@ contract testSticks is ReentrancyGuard, Ownable{
         
         tokensBoughtXDays[0] = (9411764706 * 10**12) + (4470588235 * 10**13) + (4705882353 * 10**13);
         circulatingSupplyXDays[0] = (9411764706 * 10**12) + (4470588235 * 10**13) + (4705882353 * 10**13);
+        //TODO: Get the value of treasury bal for launch
+        sptrTreasuryBal = 86000;
 
-        sptrTreasuryBal = 570000;
-
-        
     }
 
     function setDaysUsedInFactors(uint256 numDays) public onlyOwner{  
         daysInCalculation = numDays * 86400;     
     }
-
 
     function testUpdatetimeLockedplus(uint256 amt) public  {
         //require(amt > withheldWithdrawals[msg.sender].amounts, "You dont have that much to withdraw!");
@@ -354,34 +407,56 @@ contract testSticks is ReentrancyGuard, Ownable{
 
 
     function getTokensBoughtXDays() external view returns (uint256){
-        uint256 boughtnum;
+        uint256 boughtCount =0;
         uint256 d;
         uint256 numdays = daysInCalculation/86400;
         uint256 daySinceLaunched = (block.timestamp - timeLaunched) / 86400;
+
         if (daySinceLaunched == 0) {
-        return tokensBoughtXDays[0];
+            return tokensBoughtXDays[0];
         }
-        for (d = daySinceLaunched - numdays; d < daySinceLaunched; d++) {  //for loop example
-          boughtnum += tokensBoughtXDays[d];
+        else if (daySinceLaunched < numdays)
+        {
+            for (d = 0; d < daySinceLaunched; d++) {
+            boughtCount += tokensBoughtXDays[d];
             }
-        
-       return boughtnum;
+            return boughtCount;
+        }
+        else{
+            for (d = daySinceLaunched - numdays; d < daySinceLaunched; d++) {  //for loop example
+                boughtCount += tokensBoughtXDays[d];
+                }
+            return boughtCount;
+        }
+               
     }
     function getTokensSoldXDays() external view returns (uint256){
-        uint256 soldNum;
+        uint256 soldCount =0;
         uint256 d;
         uint256 numdays = daysInCalculation/86400;
+        uint256 daySinceLaunched = (block.timestamp - timeLaunched) / 86400;
 
-        for (d = 0; d < numdays; d++) { 
-          soldNum += tokensSoldXDays[d];
-      }
-       return soldNum;
+        if (daySinceLaunched == 0) {
+            return tokensSoldXDays[0];
+        }
+        else if (daySinceLaunched < numdays)
+        {
+            for (d = 0; d < daySinceLaunched; d++) {
+            soldCount += tokensSoldXDays[d];
+            }
+            return soldCount;
+        }
+        else{
+            for (d = daySinceLaunched - numdays; d < daySinceLaunched; d++) {  //for loop example
+                soldCount += tokensSoldXDays[d];
+                }
+            return soldCount;
+        }
+
     }
 
-
-    function whitelist(address _addr) public onlyOwner {  
-        //TODO: 
-        
+    function addWhitelistee(address _addr) public onlyOwner {  
+       whiteListAddresses[_addr] = true;
     }
 
     function addStable(string memory _ticker, address _addr, uint256 _dec) public onlyOwner {

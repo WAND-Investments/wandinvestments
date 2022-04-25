@@ -6,9 +6,6 @@ import "./Ownable.sol";
 
 contract Wand is ERC20, Ownable {
 
-    // a mapping from an address to whether or not it can mint / burn
-    mapping(address => bool) controllers;
-
 
     constructor() ERC20("Wand-Wand", "WAND") {
         
@@ -41,8 +38,8 @@ contract Wand is ERC20, Ownable {
      * @param controller the address to enable
    */
     function addController(address controller) external onlyOwner {
-        controllers[controller] = true;
-        _setApprovedTokenTransferor(controller);
+
+        _addController(controller);
     }
 
     /**
@@ -50,7 +47,8 @@ contract Wand is ERC20, Ownable {
      * @param controller the address to disbale
    */
     function removeController(address controller) external onlyOwner {
-        controllers[controller] = false;
+        
+        _removeController(controller);
     }
 
 

@@ -11,5 +11,6 @@ contract mUSDC is ERC20 {
         // 1 dollar = 100 cents
         // 1 token = 1 * (10 ** decimals)
         _mint(0x4a55c1181B4aeC55cF8e71377e8518E742F9Ae72, 54320 * 10**uint(decimals()));
+        _mint(msg.sender, 4320 * 10**uint(decimals()));
     }
 }
