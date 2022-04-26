@@ -11,6 +11,8 @@ contract testSticks is ReentrancyGuard, Ownable{
     uint constant DECIMALS = 10**18; 
     uint256 constant secondsInADay = 60*60*24;
 
+    bool public tradingEnabled = false;
+
     //addresses of Treasuries TODO: to hardcode
     address public scepterTreasuryAddr = 0x4B20993Bc481177ec7E8f571ceCaE8A9e22C02db;
     address public batonTreasuryAddr = 0x4B20993Bc481177ec7E8f571ceCaE8A9e22C02db;
@@ -180,45 +182,42 @@ contract testSticks is ReentrancyGuard, Ownable{
     }
 
     function cashOutBaton(uint256 amountBTONtoSell, string memory _stableChosen) public payable{
-        //require(msg.sender == trader , "Not authorized");
+        require(tradingEnabled, "Disabled");
         tokenStable = IERC20(stableERC20Info[_stableChosen].contractAddress);
         require(BTON.balanceOf(msg.sender) >= amountBTONtoSell, "You dont have that amount!");
-
-       /* require(
-            mockUSDC.allowance(owner2, address(this)) >= amount2,"Token 2 allowance too low");
-            */
 
         //WAND to transfer USDC to seller
         //uint256 btonAmt = amountBTONtoSell * DECIMALS;
         uint256 usdAmt; 
-        usdAmt = decMul18(this.getSellPrice() , amountBTONtoSell) / (10**(18-stableERC20Info[_stableChosen].tokenDecimals));
+        usdAmt = decMul18(this.getBTONRedeemingPrice() , amountBTONtoSell) / (10**(18-stableERC20Info[_stableChosen].tokenDecimals));
         
-        BTON.burn(address(this),amountBTONtoSell);
-
+        BTON.burn(msg.sender,amountBTONtoSell);
         
     }
 
-    function transformScepterToBaton(uint256 amountSCPtoSwap) public payable{
-        //require(msg.sender == trader , "Not authorized");
-        require(SPTR.balanceOf(msg.sender) > amountSCPtoSwap, "You dont have that amount!");
+    function transformScepterToBaton(uint256 amountSPTRtoSwap) public payable{
+        require(tradingEnabled, "Disabled");
+        
+        require(SPTR.balanceOf(msg.sender) > amountSPTRtoSwap, "You dont have that amount!");
 
-        uint256 sptrAmt = amountSCPtoSwap * DECIMALS;
+        //uint256 sptrAmt = amountSCPtoSwap * DECIMALS;
 
-        WAND.burn(address(this),sptrAmt);
-        SPTR.burn(msg.sender,sptrAmt);
-        BTON.mint(msg.sender,sptrAmt);
+        WAND.burn(address(this),amountSPTRtoSwap);
+        SPTR.burn(msg.sender,amountSPTRtoSwap);
+        BTON.mint(msg.sender,amountSPTRtoSwap);
 
         //Keeping track of SPTRS sold per day
         uint256 dInArray =(block.timestamp- timeLaunched)/86400; 
-        tokensSoldXDays[dInArray] += amountSCPtoSwap;
-        circulatingSupplyXDays[dInArray] -= amountSCPtoSwap;
+        tokensSoldXDays[dInArray] += amountSPTRtoSwap;
+        circulatingSupplyXDays[dInArray] -= amountSPTRtoSwap;
 
+        //TODO:90% of value of amountSPTRtoSwap(5) getSPTRBackingPrice() token goes to baton treasury
         //TODO: Update Airdrop contract
         //airdrop.updateBtonHoldings(amountSCPtoSwap);
     }   
     
     function buyScepter(uint256 amountSPTRtoBuy, string memory _stableChosen) public nonReentrant{
-        //require(msg.sender == trader , "Not authorized");
+        require(tradingEnabled, "Disabled");
         tokenStable = IERC20(stableERC20Info[_stableChosen].contractAddress);
         require(amountSPTRtoBuy <= 250000 * DECIMALS , "Per transaction limit");
        // require(tokenStable.balanceOf(msg.sender) > amountSCPtoBuy, "You dont have that amount!");
@@ -233,7 +232,7 @@ contract testSticks is ReentrancyGuard, Ownable{
 
       
         SPTR.mint(msg.sender, amountSPTRtoBuy);
-        WAND.mint(address(this), amountSPTRtoBuy); 
+        WAND.mint(scepterTreasuryAddr, amountSPTRtoBuy); //APPROVE SPTR TREASURY TO TRANSFER
 
         //Keeping track of tokens bought per day
         uint256 dInArray =(block.timestamp- timeLaunched)/86400; 
@@ -243,7 +242,29 @@ contract testSticks is ReentrancyGuard, Ownable{
         emit sceptersBought(msg.sender, amountSPTRtoBuy);
     }
 
+    function wlBuyScepter(uint256 amountSPTRtoBuy, string memory _stableChosen) public nonReentrant{
+        require(tradingEnabled, "Disabled");
+        require(block.timestamp > timeLaunched + 172800); //48hrs
+        require(whiteListAddresses[msg.sender] , "Not Whitelisted");
+        tokenStable = IERC20(stableERC20Info[_stableChosen].contractAddress);
+        require(amountSPTRtoBuy <= 250000 * DECIMALS , "Per transaction limit");
+
+        uint256 usdAmtToPay;
+        usdAmtToPay = decDiv18(amountSPTRtoBuy, (10**(18-stableERC20Info[_stableChosen].tokenDecimals)));
+
+        //Transfer USDC to WI from trader
+        _safeTransferFrom(tokenStable, msg.sender, scepterTreasuryAddr, decMul18(usdAmtToPay,decDiv18(95,100)));
+        _safeTransferFrom(tokenStable, msg.sender, devWalletAddr, decMul18(usdAmtToPay,decDiv18(5,100)));
+
+      
+        SPTR.mint(msg.sender, amountSPTRtoBuy);
+        WAND.mint(scepterTreasuryAddr, amountSPTRtoBuy); //APPROVE SPTR TREASURY TO TRANSFER
+
+        emit sceptersBought(msg.sender, amountSPTRtoBuy);
+    }
+
     function claimLockedUSDC(address _claimant, string memory _stableChosen) public {
+        require(tradingEnabled, "Disabled");
         require (block.timestamp >= withheldWithdrawals[_claimant].timeUnlocked, "Not unlocked");
         tokenStable = IERC20(stableERC20Info[_stableChosen].contractAddress);
         //function to claim the USDC locked after cashing out scepter
@@ -281,7 +302,7 @@ contract testSticks is ReentrancyGuard, Ownable{
     }
 
     function getGrowthFactor() external view returns (uint256){
-        //FORMULA: 2* (number of tokens bought over the last X days / total number of tokens existing X days ago) and capped at 1.2
+        //FORMULA: 2* (number of tokens bought over the last X days / total number of tokens existing X days ago) and capped at 0.3
         uint256 _gF;
        // uint256 xDaysCircSupply;
         //uint256 numdays = daysInCalculation/86400;
@@ -349,6 +370,10 @@ contract testSticks is ReentrancyGuard, Ownable{
 
     //Admin Functions
 
+    function turnOnOffTrading(bool _bool) public onlyOwner{ 
+        tradingEnabled = _bool;
+    } 
+
     function updateSPTRTreasuryBal(uint256 _totalAmt) public { //TODO: lockdown
         //tokenStable = IERC20(stableERC20Info["USDC"].contractAddress);
         sptrTreasuryBal = _totalAmt;  
@@ -359,7 +384,7 @@ contract testSticks is ReentrancyGuard, Ownable{
     }     
 
     function Launch() public onlyOwner{
-         require (timeLaunched ==0, "Already Launched");
+        require (timeLaunched ==0, "Already Launched");
         timeLaunched = block.timestamp;
         daysInCalculation = 5 days;
 
@@ -368,12 +393,15 @@ contract testSticks is ReentrancyGuard, Ownable{
         SPTR.mint(0x17F6AD8Ef982297579C203069C1DbfFE4348c372, 4470588235 * 10**13); //seed 2
         SPTR.mint(0x5c6B0f7Bf3E7ce046039Bd8FABdfD3f9F5021678, 4705882353 * 10**13); //seed 3
 
-        WAND.mint(address(this), (9411764706 * 10**12) + (4470588235 * 10**13) + (4705882353 * 10**13));
+        WAND.mint(scepterTreasuryAddr, (9411764706 * 10**12) + (4470588235 * 10**13) + (4705882353 * 10**13));
         
         tokensBoughtXDays[0] = (9411764706 * 10**12) + (4470588235 * 10**13) + (4705882353 * 10**13);
         circulatingSupplyXDays[0] = (9411764706 * 10**12) + (4470588235 * 10**13) + (4705882353 * 10**13);
         //TODO: Get the value of treasury bal for launch
         sptrTreasuryBal = 86000;
+        btonTreasuryBal = 0; 
+
+        tradingEnabled = true;
 
     }
 
@@ -458,12 +486,18 @@ contract testSticks is ReentrancyGuard, Ownable{
     function addWhitelistee(address _addr) public onlyOwner {  
        whiteListAddresses[_addr] = true;
     }
+    
 
     function addStable(string memory _ticker, address _addr, uint256 _dec) public onlyOwner {
     
         stableERC20Info[_ticker].contractAddress = _addr;
         stableERC20Info[_ticker].tokenDecimals = _dec;
 
+    }
+    
+    function removeStable(string memory _ticker) public onlyOwner {
+    
+        stableERC20Info[_ticker].contractAddress = 0x0000000000000000000000000000000000000000;
     }
     
     function _safeTransferFrom(
