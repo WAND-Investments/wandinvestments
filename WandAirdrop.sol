@@ -5,15 +5,19 @@ import "./IERC20.sol";
 import "./Ownable.sol";
 
 contract testAirDrop is Ownable{ 
-
-    //TODO: Update airdropped balance of tUSDC 
+    /*TODO: Update airdropped balance of tUSDC 
+Each time there is a transform baton, i store wallet address.
+Can check bal of batons the user has
+each time the airdrop of usd happens, i record to that address
+    */
+    
     //mapping(address => uint256) public airdroppedBal;
     struct btonsLocked {  
         uint256 timeInit;  
         uint256 amounts;  
         }
     struct airdropForTheWeek {  
-        address investerWallet;  
+        address investorWallet;  
         uint256 entitledAmt;  
         }
         

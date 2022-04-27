@@ -65,7 +65,8 @@ contract testSticks is ReentrancyGuard, Ownable{
         uint256 timeUnlocked;  
         uint256 amounts;  
         }
-    mapping(address => lockedamounts) public withheldWithdrawals;   
+    mapping(address => lockedamounts) public withheldWithdrawals; 
+    mapping(address => uint256) public userBTONAirdropAmts;  
     //Scepter private sptr;
     //Baton private btn;
     //Wand private wand;
@@ -75,6 +76,7 @@ contract testSticks is ReentrancyGuard, Ownable{
     **/
     event sceptersBought(address indexed _from, uint256 _amount);
     event sceptersSold(address indexed _from, uint256 _amount);
+    //event airdroppedUSD(address indexed _to, uint256 _amount);
 
     constructor() {   
         //INIT Contracts, Treasuries and ERC20 Tokens
@@ -197,8 +199,7 @@ contract testSticks is ReentrancyGuard, Ownable{
 
     function transformScepterToBaton(uint256 amountSPTRtoSwap) public payable{
         require(tradingEnabled, "Disabled");
-        
-        require(SPTR.balanceOf(msg.sender) > amountSPTRtoSwap, "You dont have that amount!");
+        require(SPTR.balanceOf(msg.sender) >= amountSPTRtoSwap, "You dont have that amount!");
 
         //uint256 sptrAmt = amountSCPtoSwap * DECIMALS;
 
@@ -211,9 +212,13 @@ contract testSticks is ReentrancyGuard, Ownable{
         tokensSoldXDays[dInArray] += amountSPTRtoSwap;
         circulatingSupplyXDays[dInArray] -= amountSPTRtoSwap;
 
-        //TODO:90% of value of amountSPTRtoSwap(5) getSPTRBackingPrice() token goes to baton treasury
-        //TODO: Update Airdrop contract
-        //airdrop.updateBtonHoldings(amountSCPtoSwap);
+        //Transfer 90% of value of amountSPTRtoSwap getSPTRBackingPrice() token to baton treasury
+        uint256 btonTreaAmtTrf; 
+        btonTreaAmtTrf = decMul18(this.getSPTRBackingPrice(), amountSPTRtoSwap);
+        uint256 toTrf = decMul18(btonTreaAmtTrf, div(9,10)) / (10**12);
+        tokenStable = IERC20(stableERC20Info["USDC"].contractAddress);
+        tokenStable.transfer(batonTreasuryAddr, toTrf); 
+        //TODO: do i need to store wallet address here or i can get from holders listing
     }   
     
     function buyScepter(uint256 amountSPTRtoBuy, string memory _stableChosen) public nonReentrant{
